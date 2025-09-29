@@ -401,7 +401,7 @@ void AnimatePentagonToLine(int value)
 	{
 		glutTimerFunc(16, AnimatePentagonToLine, 0);
 	}
-	else
+	else if (animT >= 0.8f)
 	{
 		shapes[animIdx].type = LINE;
 		animating = false;
