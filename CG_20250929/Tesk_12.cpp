@@ -35,7 +35,6 @@ struct Shape
 };
 
 std::vector<Shape> shapes;
-bool space = true;
 
 bool animating = false; // 애니메이션 진행 여부
 std::vector<glm::vec3> startVerts, targetVerts;
@@ -45,7 +44,8 @@ float animT = 0.0f;   // 애니메이션 진행도
 // 사분면 구분 선 그리기
 void InitCenterCross()
 {
-	const float verts[] = {
+	const float verts[] = 
+	{
 		-1.0f,  0.0f, 0.0f,   1.0f,  0.0f, 0.0f,   // 가로선: (-1,0) -> (1,0)
 		 0.0f, -1.0f, 0.0f,   0.0f,  1.0f, 0.0f    // 세로선: (0,-1) -> (0,1)
 	};
@@ -193,7 +193,7 @@ void AddPentagon()
 void Reset()
 {
 	shapes.clear();
-	space = true;
+	animating = false;
 	InitCenterCross();
 	AddLine();
 	AddTriangle();
@@ -547,7 +547,7 @@ GLvoid drawScene()
 	GLint locColor = glGetUniformLocation(shaderProgramID, "uColor");
 
 	// 사분면 선 그리기
-	if (space)
+	if (!animating)
 	{
 		glUniform4f(locColor, 0.0f, 0.0f, 0.0f, 1.0f);   // 검정색
 		glBindVertexArray(axisVAO);
@@ -558,6 +558,10 @@ GLvoid drawScene()
 
 	for (int i = 0; i < shapes.size(); i++)
 	{
+		// 애니메이션 중이면 그 도형만 그리기
+		if (animating && i != animIdx)
+			continue;
+
 		Shape& shape = shapes[i];
 		glBindVertexArray(shape.VAO);
 		glUniform4fv(locColor, 1, glm::value_ptr(shape.colors[0]));
@@ -581,7 +585,6 @@ GLvoid drawScene()
 		glBindVertexArray(0);
 	}
 
-	glDrawArrays(GL_TRIANGLES, 0, 3);
 	glutSwapBuffers();
 }
 
