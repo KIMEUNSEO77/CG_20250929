@@ -37,6 +37,11 @@ struct Shape
 std::vector<Shape> shapes;
 bool space = true;
 
+bool animating = false; // 애니메이션 진행 여부
+std::vector<glm::vec3> startVerts, targetVerts;
+int animIdx = -1;     // 애니메이션 대상 도형 인덱스
+float animT = 0.0f;   // 애니메이션 진행도
+
 // 사분면 구분 선 그리기
 void InitCenterCross()
 {
@@ -196,18 +201,57 @@ void Reset()
 	AddPentagon();
 }
 
-// line -> triangle
-void LineToTriangle(Shape& line)
+void AnimateLineToTriangle(int value)
 {
-	if (line.type != LINE || line.vertices.size() != 2) return;
+	if (!animating) return;
+	animT += 0.005f;
+	if (animT > 1.0f) animT = 1.0f;
 
-	glm::vec3 start = line.vertices[0];
-	glm::vec3 end = line.vertices[1];
+	std::vector<glm::vec3> currentVertexs;
+	for (size_t i = 0; i < targetVerts.size(); ++i) 
+	{
+		glm::vec3 startVertex;
+		// 목표 점 개수가 시작점 개수보다 많으면 마지막 점 사용
+		if (i < startVerts.size()) startVertex = startVerts[i];
+		else startVertex = startVerts.back();
+
+		glm::vec3 targetVertex = targetVerts[i];
+		currentVertexs.push_back(startVertex + (targetVertex - startVertex) * animT);
+	}
+	shapes[animIdx].vertices = currentVertexs;
+
+	if (shapes[animIdx].type != TRIANGLE)
+		shapes[animIdx].type = TRIANGLE;
+
+	UpdateShape(shapes[animIdx]);
+	glutPostRedisplay();
+
+	if (animT < 1.0f) 
+	{
+		glutTimerFunc(16, AnimateLineToTriangle, 0);
+	}
+	else 
+	{
+		shapes[animIdx].type = TRIANGLE;
+		animating = false;
+	}
+}
+
+// line -> triangle
+void LineToTriangle(int idx)
+{
+	if (shapes[idx].type != LINE || shapes[idx].vertices.size() != 2) return;
+	glm::vec3 start = shapes[idx].vertices[0];
+	glm::vec3 end = shapes[idx].vertices[1];
 	glm::vec3 mid = (start + end) / 2.0f + glm::vec3(0.0f, 0.3f, 0.0f);
-	line.type = TRIANGLE;
-	line.vertices = { start, end, mid };
-	line.indices.clear();
-	UpdateShape(line);
+	glm::vec3 targetEnd = end + glm::vec3(0.0f, -0.4f, 0.0f);
+
+	startVerts = { start, end, end };
+	targetVerts = { start, targetEnd, mid };
+	animIdx = idx;
+	animT = 0.0f;
+	animating = true;
+	glutTimerFunc(16, AnimateLineToTriangle, 0);
 }
 
 // triangle -> rect
@@ -267,7 +311,7 @@ void Keyboard(unsigned char key, int x, int y)
 	switch (key)
 	{
 	case 'l':
-		LineToTriangle(shapes[0]);
+		if (!animating) LineToTriangle(0);			
 		break;
 	case 't':
 		TriangleToRect(shapes[1]);
