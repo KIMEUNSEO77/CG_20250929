@@ -254,56 +254,169 @@ void LineToTriangle(int idx)
 	glutTimerFunc(16, AnimateLineToTriangle, 0);
 }
 
-// triangle -> rect
-void TriangleToRect(Shape& triangle)
+void AnimateTriangleToRect(int value)
 {
-	if (triangle.type != TRIANGLE || triangle.vertices.size() != 3) return;
-	glm::vec3 v0 = triangle.vertices[0];
-	glm::vec3 v1 = triangle.vertices[1];
-	glm::vec3 v2 = triangle.vertices[2];
-	glm::vec3 v3 = triangle.vertices[0] - ((v2 - v1) / 2.0f);
-	glm::vec3 v4 = triangle.vertices[0] + ((v2 - v1) / 2.0f);
-	triangle.type = RECTANG;
-	triangle.vertices = { v0, v1, v2, v3, v4 };
-	triangle.indices =
+	if (!animating) return;
+	animT += 0.005f;
+	if (animT > 1.0f) animT = 1.0f;
+
+	std::vector<glm::vec3> currentVertexs;
+	for (size_t i = 0; i < targetVerts.size(); ++i)
 	{
-		0, 1, 3,
-		0, 1, 2,
-		0, 2, 4
+		glm::vec3 startVertex;
+		if (i < startVerts.size()) startVertex = startVerts[i];
+		else startVertex = startVerts.back();
+		glm::vec3 targetVertex = targetVerts[i];
+		currentVertexs.push_back(startVertex + (targetVertex - startVertex) * animT);
+	}
+
+	shapes[animIdx].vertices = currentVertexs;
+	if (shapes[animIdx].type != RECTANG)
+		shapes[animIdx].type = RECTANG;
+
+	shapes[animIdx].indices = { 0, 1, 3, 2, 3, 0 };
+	UpdateShape(shapes[animIdx]);
+	glutPostRedisplay();
+
+	if (animT < 1.0f)
+	{
+		glutTimerFunc(16, AnimateTriangleToRect, 0);
+	}
+	else
+	{
+		shapes[animIdx].type = RECTANG;
+		animating = false;
+	}
+}
+
+// triangle -> rect
+void TriangleToRect(int idx)
+{
+	if (shapes[idx].type != TRIANGLE || shapes[idx].vertices.size() != 3) return;
+	glm::vec3 v0 = shapes[idx].vertices[0];
+	glm::vec3 v1 = shapes[idx].vertices[1];
+	glm::vec3 v2 = shapes[idx].vertices[2];
+	glm::vec3 v3 = shapes[idx].vertices[0] - ((v2 - v1) / 2.0f);
+	glm::vec3 v4 = shapes[idx].vertices[0] + ((v2 - v1) / 2.0f);
+
+	startVerts = { v0, v1, v2, v2 };
+	targetVerts = { v3, v4, v1, v2 };
+	animIdx = idx;
+	animT = 0.0f;
+	animating = true;
+	glutTimerFunc(16, AnimateTriangleToRect, 0);
+}
+
+void AnimateRectToPentagon(int value)
+{
+	if (!animating) return;
+	animT += 0.005f;
+	if (animT > 1.0f) animT = 1.0f;
+	std::vector<glm::vec3> currentVertexs;
+	for (size_t i = 0; i < targetVerts.size(); ++i)
+	{
+		glm::vec3 startVertex;
+		if (i < startVerts.size()) startVertex = startVerts[i];
+		else startVertex = startVerts.back();
+		glm::vec3 targetVertex = targetVerts[i];
+		currentVertexs.push_back(startVertex + (targetVertex - startVertex) * animT);
+	}
+	shapes[animIdx].vertices = currentVertexs;
+	if (shapes[animIdx].type != PENTAGON)
+		shapes[animIdx].type = PENTAGON;
+
+	shapes[animIdx].indices = 
+	{ 
+		1, 4, 2,
+		2, 3, 4,
+		0, 4, 3
 	};
-	UpdateShape(triangle);
+	UpdateShape(shapes[animIdx]);
+	glutPostRedisplay();
+
+	if (animT < 1.0f)
+	{
+		glutTimerFunc(16, AnimateRectToPentagon, 0);
+	}
+	else
+	{
+		shapes[animIdx].type = PENTAGON;
+		animating = false;
+	}
 }
 
 // rect -> pentagon
-void RectToPentagon(Shape& rect)
+void RectToPentagon(int idx)
 {
-	if (rect.type != RECTANG || rect.vertices.size() != 4) return;
-	glm::vec3 v0 = rect.vertices[0];
-	glm::vec3 v1 = rect.vertices[1];
-	glm::vec3 v2 = rect.vertices[2] + glm::vec3(-0.1f, 0.1f, 0.0f);
-	glm::vec3 v3 = rect.vertices[3] + glm::vec3(0.1f, 0.1f, 0.0f);
-	glm::vec3 v4 = (v0 + v1) / 2.0f + glm::vec3(0.0f, 0.2f, 0.0f);
-	rect.type = PENTAGON;
-	rect.vertices = { v0, v1, v2, v3, v4 };
-	rect.indices =
+	if (shapes[idx].type != RECTANG || shapes[idx].vertices.size() != 4) return;
+	glm::vec3 v0 = shapes[idx].vertices[0];
+	glm::vec3 v1 = shapes[idx].vertices[1];
+	glm::vec3 v2 = shapes[idx].vertices[2];
+	glm::vec3 v3 = shapes[idx].vertices[3];
+	glm::vec3 v4 = shapes[idx].vertices[2] + glm::vec3(-0.1f, 0.1f, 0.0f);
+	glm::vec3 v5 = shapes[idx].vertices[3] + glm::vec3(0.1f, 0.1f, 0.0f);
+	glm::vec3 v6 = (v0 + v1) / 2.0f + glm::vec3(0.0f, 0.2f, 0.0f);
+	
+	startVerts = { v0, v1, v2, v3, v0 };
+	targetVerts = { v0, v1, v4, v5, v6 };
+	animIdx = idx;
+	animT = 0.0f;
+	animating = true;
+	glutTimerFunc(16, AnimateRectToPentagon, 0);
+}
+
+void AnimatePentagonToLine(int value)
+{
+	if (!animating) return;
+	animT += 0.005f;
+	if (animT > 1.0f) animT = 1.0f;
+	std::vector<glm::vec3> currentVertexs;
+	for (size_t i = 0; i < targetVerts.size(); ++i)
 	{
-		0, 3, 4,
-		1, 2, 4,
-		2, 3, 4
-	};
-	UpdateShape(rect);
+		glm::vec3 startVertex;
+		if (i < startVerts.size()) startVertex = startVerts[i];
+		else startVertex = startVerts.back();
+		glm::vec3 targetVertex = targetVerts[i];
+		currentVertexs.push_back(startVertex + (targetVertex - startVertex) * animT);
+	}
+	shapes[animIdx].vertices = currentVertexs;
+
+	UpdateShape(shapes[animIdx]);
+	glutPostRedisplay();
+	if (animT < 1.0f)
+	{
+		glutTimerFunc(16, AnimatePentagonToLine, 0);
+	}
+	else
+	{
+		shapes[animIdx].type = LINE;
+		animating = false;
+	}
 }
 
 // pentagon -> line
-void PentagonToLine(Shape& pentagon)
+void PentagonToLine(int idx)
 {
-	if (pentagon.type != PENTAGON || pentagon.vertices.size() != 5) return;
-	glm::vec3 v0 = pentagon.vertices[0];
-	glm::vec3 v1 = pentagon.vertices[2];
+	if (shapes[idx].type != PENTAGON || shapes[idx].vertices.size() != 5) return;
+	glm::vec3 v0 = shapes[idx].vertices[0];
+	glm::vec3 v1 = shapes[idx].vertices[1];
+	glm::vec3 v2 = shapes[idx].vertices[2];
+	glm::vec3 v3 = shapes[idx].vertices[3];
+	glm::vec3 v4 = shapes[idx].vertices[4];
+	startVerts = { v0, v1, v2, v3, v4 };
+	targetVerts = { v0, v1, v1, v0, v0 };
+	animIdx = idx;
+	animT = 0.0f;
+	animating = true;
+	glutTimerFunc(16, AnimatePentagonToLine, 0);
+
+	/*
 	pentagon.type = LINE;
 	pentagon.vertices = { v0, v1 };
 	pentagon.indices.clear();
 	UpdateShape(pentagon);
+	*/
+	
 }
 
 void Keyboard(unsigned char key, int x, int y)
@@ -314,13 +427,13 @@ void Keyboard(unsigned char key, int x, int y)
 		if (!animating) LineToTriangle(0);			
 		break;
 	case 't':
-		TriangleToRect(shapes[1]);
+		if (!animating) TriangleToRect(1);
 		break;
 	case 'r':
-		RectToPentagon(shapes[2]);
+		if (!animating) RectToPentagon(2);
 		break;
 	case 'p':
-		PentagonToLine(shapes[3]);
+		if (!animating) PentagonToLine(3);
 		break;
 	case 'a':
 		Reset();
