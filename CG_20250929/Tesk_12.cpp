@@ -8,6 +8,7 @@
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <vector>
 
 void make_vertexShaders();
 void make_fragmentShaders();
@@ -22,7 +23,21 @@ GLuint vertexShader;
 GLuint fragmentShader;
 GLuint axisVAO = 0, axisVBO = 0;   // line 용 vao, vbo
 
-// 선 그리기
+enum ShapeType { LINE, TRIANGLE, RECTANG, PENTAGON };
+
+struct Shape
+{
+	ShapeType type;
+	std::vector<glm::vec3> vertices;
+	std::vector<glm::vec4> colors;
+	std::vector<GLuint> indices;
+	GLuint VAO = 0, VBO = 0, EBO = 0;
+};
+
+std::vector<Shape> shapes;
+bool space = true;
+
+// 사분면 구분 선 그리기
 void InitCenterCross()
 {
 	const float verts[] = {
@@ -72,6 +87,158 @@ char* filetobuf(const char* file)
 	// Return the buffer 
 }
 
+void UpdateShape(Shape& shape)
+{
+	if (!shape.VAO) glGenVertexArrays(1, &shape.VAO);
+	if (!shape.VBO) glGenBuffers(1, &shape.VBO);
+	if (!shape.EBO && !shape.indices.empty()) glGenBuffers(1, &shape.EBO);
+
+	glBindVertexArray(shape.VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, shape.VBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, shape.EBO);
+	
+	glBufferData(GL_ARRAY_BUFFER, shape.vertices.size() * sizeof(glm::vec3), shape.vertices.data(), GL_DYNAMIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, shape.indices.size() * sizeof(GLuint), shape.indices.data(), GL_DYNAMIC_DRAW);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+// line
+void AddLine()
+{
+	Shape line;
+	line.type = LINE;
+	line.vertices = 
+	{
+		glm::vec3(-0.7f, 0.3f, 0.0f), glm::vec3(-0.3f, 0.7f, 0.0f)
+	};
+	line.colors = 
+	{
+		glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)
+	};
+	UpdateShape(line);
+	shapes.push_back(line);
+}
+
+// triangle
+void AddTriangle()
+{
+	Shape triangle;
+	triangle.type = TRIANGLE;
+	triangle.vertices =
+	{
+		glm::vec3(0.55f, 0.7f, 0.0f), glm::vec3(0.3f, 0.2f, 0.0f), glm::vec3(0.8f, 0.2f, 0.0f)
+	};
+	triangle.colors =
+	{
+		glm::vec4(1.0f, 1.0f, 0.0f, 1.0f)
+	};
+	UpdateShape(triangle);
+	shapes.push_back(triangle);
+}
+
+// rect
+void AddRect()
+{
+	Shape rect;
+	rect.type = RECTANG;
+	rect.vertices =
+	{
+		glm::vec3(-0.7f, -0.3f, 0.0f), glm::vec3(-0.3f, -0.3f, 0.0f), glm::vec3(-0.3f, -0.7f, 0.0f), glm::vec3(-0.7f, -0.7f, 0.0f)
+	};
+	rect.colors =
+	{
+		glm::vec4(0.0f, 1.0f, 0.0f, 1.0f)
+	};
+	rect.indices =
+	{
+		0, 1, 2,
+		2, 3, 0
+	};
+	UpdateShape(rect);
+	shapes.push_back(rect);
+}
+
+// Pentagon
+void AddPentagon()
+{
+	Shape pentagon;
+	pentagon.type = PENTAGON;
+	pentagon.vertices =
+	{
+		glm::vec3(0.5f, -0.2f, 0.0f), glm::vec3(0.3f, -0.4f, 0.0f), glm::vec3(0.7f, -0.4f, 0.0f),
+		glm::vec3(0.4f, -0.6, 0.0f), glm::vec3(0.6f, -0.6, 0.0f)
+	};
+	pentagon.colors =
+	{
+		glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)
+	};
+	pentagon.indices =
+	{
+		0, 1, 3,
+		0, 2, 4,
+		0, 3, 4
+	};
+	UpdateShape(pentagon);
+	shapes.push_back(pentagon);
+}
+
+void Reset()
+{
+	shapes.clear();
+	space = true;
+	InitCenterCross();
+	AddLine();
+	AddTriangle();
+	AddRect();
+	AddPentagon();
+}
+
+// line -> triangle
+void LineToTriangle(Shape& line)
+{
+	if (line.type != LINE || line.vertices.size() != 2) return;
+
+	glm::vec3 start = line.vertices[0];
+	glm::vec3 end = line.vertices[1];
+	glm::vec3 mid = (start + end) / 2.0f + glm::vec3(0.0f, 0.1f, 0.0f);
+	line.type = TRIANGLE;
+	line.vertices = { start, end, mid };
+	line.indices.clear();
+	UpdateShape(line);
+}
+
+// triangle -> rect
+
+// rect -> pentagon
+
+// pentagon -> line
+
+void Keyboard(unsigned char key, int x, int y)
+{
+	switch (key)
+	{
+	case 'l':
+		LineToTriangle(shapes[0]);
+		break;
+	case 't':
+		break;
+	case 'r':
+		break;
+	case 'p':
+		break;
+	case 'a':
+		Reset();
+		break;
+	case 'q':
+		exit(0);
+		break;
+	}
+	glutPostRedisplay();
+}
+
 void main(int argc, char** argv)
 {
 	glutInit(&argc, argv);
@@ -88,7 +255,12 @@ void main(int argc, char** argv)
 	shaderProgramID = make_shaderProgram();
 
 	InitCenterCross();
+	AddLine();
+	AddTriangle();
+	AddRect();
+	AddPentagon();
 
+	glutKeyboardFunc(Keyboard);
 	glutDisplayFunc(drawScene);
 	glutReshapeFunc(Reshape);
 	glutMainLoop();
@@ -169,11 +341,39 @@ GLvoid drawScene()
 	GLint locColor = glGetUniformLocation(shaderProgramID, "uColor");
 
 	// 사분면 선 그리기
-	glUniform4f(locColor, 0.0f, 0.0f, 0.0f, 1.0f);   // 검정색
-	glBindVertexArray(axisVAO);
-	glLineWidth(1.0f);                               
-	glDrawArrays(GL_LINES, 0, 4);                     
-	glBindVertexArray(0);
+	if (space)
+	{
+		glUniform4f(locColor, 0.0f, 0.0f, 0.0f, 1.0f);   // 검정색
+		glBindVertexArray(axisVAO);
+		glLineWidth(1.0f);
+		glDrawArrays(GL_LINES, 0, 4);
+		glBindVertexArray(0);
+	}
+
+	for (int i = 0; i < shapes.size(); i++)
+	{
+		Shape& shape = shapes[i];
+		glBindVertexArray(shape.VAO);
+		glUniform4fv(locColor, 1, glm::value_ptr(shape.colors[0]));
+
+		switch (shape.type)
+		{
+		case LINE:
+			glLineWidth(2.0f);
+			glDrawArrays(GL_LINES, 0, shape.vertices.size());
+			break;
+		case TRIANGLE:
+			glDrawArrays(GL_TRIANGLES, 0, shape.vertices.size());
+			break;
+		case RECTANG:
+			glDrawElements(GL_TRIANGLES, shape.indices.size(), GL_UNSIGNED_INT, 0);
+			break;
+		case PENTAGON:
+			glDrawElements(GL_TRIANGLES, shape.indices.size(), GL_UNSIGNED_INT, 0);
+			break;
+		}
+		glBindVertexArray(0);
+	}
 
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 	glutSwapBuffers();
