@@ -116,7 +116,7 @@ void AddLine()
 	};
 	line.colors = 
 	{
-		glm::vec4(1.0f, 0.0f, 0.0f, 1.0f)
+		glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)
 	};
 	UpdateShape(line);
 	shapes.push_back(line);
@@ -203,7 +203,7 @@ void LineToTriangle(Shape& line)
 
 	glm::vec3 start = line.vertices[0];
 	glm::vec3 end = line.vertices[1];
-	glm::vec3 mid = (start + end) / 2.0f + glm::vec3(0.0f, 0.1f, 0.0f);
+	glm::vec3 mid = (start + end) / 2.0f + glm::vec3(0.0f, 0.3f, 0.0f);
 	line.type = TRIANGLE;
 	line.vertices = { start, end, mid };
 	line.indices.clear();
@@ -211,10 +211,56 @@ void LineToTriangle(Shape& line)
 }
 
 // triangle -> rect
+void TriangleToRect(Shape& triangle)
+{
+	if (triangle.type != TRIANGLE || triangle.vertices.size() != 3) return;
+	glm::vec3 v0 = triangle.vertices[0];
+	glm::vec3 v1 = triangle.vertices[1];
+	glm::vec3 v2 = triangle.vertices[2];
+	glm::vec3 v3 = triangle.vertices[0] - ((v2 - v1) / 2.0f);
+	glm::vec3 v4 = triangle.vertices[0] + ((v2 - v1) / 2.0f);
+	triangle.type = RECTANG;
+	triangle.vertices = { v0, v1, v2, v3, v4 };
+	triangle.indices =
+	{
+		0, 1, 3,
+		0, 1, 2,
+		0, 2, 4
+	};
+	UpdateShape(triangle);
+}
 
 // rect -> pentagon
+void RectToPentagon(Shape& rect)
+{
+	if (rect.type != RECTANG || rect.vertices.size() != 4) return;
+	glm::vec3 v0 = rect.vertices[0];
+	glm::vec3 v1 = rect.vertices[1];
+	glm::vec3 v2 = rect.vertices[2] + glm::vec3(-0.1f, 0.1f, 0.0f);
+	glm::vec3 v3 = rect.vertices[3] + glm::vec3(0.1f, 0.1f, 0.0f);
+	glm::vec3 v4 = (v0 + v1) / 2.0f + glm::vec3(0.0f, 0.2f, 0.0f);
+	rect.type = PENTAGON;
+	rect.vertices = { v0, v1, v2, v3, v4 };
+	rect.indices =
+	{
+		0, 3, 4,
+		1, 2, 4,
+		2, 3, 4
+	};
+	UpdateShape(rect);
+}
 
 // pentagon -> line
+void PentagonToLine(Shape& pentagon)
+{
+	if (pentagon.type != PENTAGON || pentagon.vertices.size() != 5) return;
+	glm::vec3 v0 = pentagon.vertices[0];
+	glm::vec3 v1 = pentagon.vertices[2];
+	pentagon.type = LINE;
+	pentagon.vertices = { v0, v1 };
+	pentagon.indices.clear();
+	UpdateShape(pentagon);
+}
 
 void Keyboard(unsigned char key, int x, int y)
 {
@@ -224,10 +270,13 @@ void Keyboard(unsigned char key, int x, int y)
 		LineToTriangle(shapes[0]);
 		break;
 	case 't':
+		TriangleToRect(shapes[1]);
 		break;
 	case 'r':
+		RectToPentagon(shapes[2]);
 		break;
 	case 'p':
+		PentagonToLine(shapes[3]);
 		break;
 	case 'a':
 		Reset();
