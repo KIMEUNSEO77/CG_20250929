@@ -579,7 +579,8 @@ GLvoid drawScene()
 		if (animating && i == animIdx) {
 			glm::vec3 currCenter = GetShapeCenter(drawVerts);
 			glm::vec3 offset = -currCenter; // 중심부터 원래 좌표까지의 차이
-			for (auto& v : drawVerts) v += offset;
+			float scale = 2.0f;
+			for (auto& v : drawVerts) v = (v - currCenter) * scale + currCenter + offset;
 			glBindBuffer(GL_ARRAY_BUFFER, shape.VBO);
 			glBufferData(GL_ARRAY_BUFFER, drawVerts.size() * sizeof(glm::vec3), drawVerts.data(), GL_DYNAMIC_DRAW);
 		}
