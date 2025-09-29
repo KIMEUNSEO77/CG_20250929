@@ -40,6 +40,7 @@ bool animating = false; // 애니메이션 진행 여부
 std::vector<glm::vec3> startVerts, targetVerts;
 int animIdx = -1;     // 애니메이션 대상 도형 인덱스
 float animT = 0.0f;   // 애니메이션 진행도
+glm::vec3 originalCenter; // 애니메이션 시작 전 도형의 원래 중심
 
 // 사분면 구분 선 그리기
 void InitCenterCross()
@@ -108,6 +109,14 @@ void UpdateShape(Shape& shape)
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+// 도형 중심 좌표 구하기
+glm::vec3 GetShapeCenter(const std::vector<glm::vec3>& verts) 
+{
+	glm::vec3 sum(0.0f);
+	for (const auto& v : verts) sum += v;
+	return sum / (float)verts.size();
 }
 
 // line
@@ -241,6 +250,9 @@ void AnimateLineToTriangle(int value)
 void LineToTriangle(int idx)
 {
 	if (shapes[idx].type != LINE || shapes[idx].vertices.size() != 2) return;
+
+	originalCenter = GetShapeCenter(shapes[idx].vertices);  // 중심 좌표 저장
+
 	glm::vec3 start = shapes[idx].vertices[0];
 	glm::vec3 end = shapes[idx].vertices[1];
 	glm::vec3 mid = (start + end) / 2.0f + glm::vec3(0.0f, 0.3f, 0.0f);
@@ -293,6 +305,7 @@ void AnimateTriangleToRect(int value)
 void TriangleToRect(int idx)
 {
 	if (shapes[idx].type != TRIANGLE || shapes[idx].vertices.size() != 3) return;
+	originalCenter = GetShapeCenter(shapes[idx].vertices); 
 	glm::vec3 v0 = shapes[idx].vertices[0];
 	glm::vec3 v1 = shapes[idx].vertices[1];
 	glm::vec3 v2 = shapes[idx].vertices[2];
@@ -349,6 +362,7 @@ void AnimateRectToPentagon(int value)
 void RectToPentagon(int idx)
 {
 	if (shapes[idx].type != RECTANG || shapes[idx].vertices.size() != 4) return;
+	originalCenter = GetShapeCenter(shapes[idx].vertices);
 	glm::vec3 v0 = shapes[idx].vertices[0];
 	glm::vec3 v1 = shapes[idx].vertices[1];
 	glm::vec3 v2 = shapes[idx].vertices[2];
@@ -398,6 +412,7 @@ void AnimatePentagonToLine(int value)
 void PentagonToLine(int idx)
 {
 	if (shapes[idx].type != PENTAGON || shapes[idx].vertices.size() != 5) return;
+	originalCenter = GetShapeCenter(shapes[idx].vertices);
 	glm::vec3 v0 = shapes[idx].vertices[0];
 	glm::vec3 v1 = shapes[idx].vertices[1];
 	glm::vec3 v2 = shapes[idx].vertices[2];
@@ -409,14 +424,6 @@ void PentagonToLine(int idx)
 	animT = 0.0f;
 	animating = true;
 	glutTimerFunc(16, AnimatePentagonToLine, 0);
-
-	/*
-	pentagon.type = LINE;
-	pentagon.vertices = { v0, v1 };
-	pentagon.indices.clear();
-	UpdateShape(pentagon);
-	*/
-	
 }
 
 void Keyboard(unsigned char key, int x, int y)
@@ -566,6 +573,20 @@ GLvoid drawScene()
 		glBindVertexArray(shape.VAO);
 		glUniform4fv(locColor, 1, glm::value_ptr(shape.colors[0]));
 
+		std::vector<glm::vec3> drawVerts = shape.vertices;
+
+		// 애니메이션 중이면 중심을 화면 중앙으로 이동
+		if (animating && i == animIdx) {
+			glm::vec3 currCenter = GetShapeCenter(drawVerts);
+			glm::vec3 offset = -currCenter; // 중심부터 원래 좌표까지의 차이
+			for (auto& v : drawVerts) v += offset;
+			glBindBuffer(GL_ARRAY_BUFFER, shape.VBO);
+			glBufferData(GL_ARRAY_BUFFER, drawVerts.size() * sizeof(glm::vec3), drawVerts.data(), GL_DYNAMIC_DRAW);
+		}
+
+		glBindVertexArray(shape.VAO);
+		glUniform4fv(locColor, 1, glm::value_ptr(shape.colors[0]));
+
 		switch (shape.type)
 		{
 		case LINE:
@@ -583,6 +604,12 @@ GLvoid drawScene()
 			break;
 		}
 		glBindVertexArray(0);
+		// 애니메이션 끝나면 원래 vertex로 복구
+		if (!animating && i == animIdx) 
+		{
+			glBindBuffer(GL_ARRAY_BUFFER, shape.VBO);
+			glBufferData(GL_ARRAY_BUFFER, shape.vertices.size() * sizeof(glm::vec3), shape.vertices.data(), GL_DYNAMIC_DRAW);
+		}
 	}
 
 	glutSwapBuffers();
