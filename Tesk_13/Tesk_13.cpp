@@ -22,6 +22,7 @@ struct Shape
 	std::vector<GLuint> indices;
 	GLuint VAO = 0, VBO = 0, EBO = 0;
 	int pointCounts = 0;   // 꼭짓점 개수
+	bool moving = false;   // 애니메이션 중인지
 };
 
 std::vector<Shape> shapes;
@@ -38,7 +39,9 @@ GLuint shaderProgramID;
 GLuint vertexShader;
 GLuint fragmentShader;
 
-int dragIdx = -1;   // 현재 드래그 중인 인덱스
+int dragIdx = -1;      // 현재 드래그 중인 인덱스
+float mouseX, mouseY;  // 마우스 좌표
+bool dragging = false; // 드래그 중인지 여부
 
 float randFloat(float a, float b)
 {
@@ -261,6 +264,51 @@ char* filetobuf(const char* file)
 	// Return the buffer 
 }
 
+// 마우스 클릭한 좌표 정규화
+void PixelTrans(int px, int py, float& nx, float& ny)
+{
+	float w = (float)glutGet(GLUT_WINDOW_WIDTH);
+	float h = (float)glutGet(GLUT_WINDOW_HEIGHT);
+	nx = (px / w) * 2.0f - 1.0f;
+	ny = 1.0f - (py / h) * 2.0f;
+}
+
+void Mouse(int button, int state, int x, int y)
+{
+	float nx, ny;  // 마우스가 클릭한 좌표를 정규화
+	PixelTrans(x, y, nx, ny);
+
+	if (button == GLUT_LEFT_BUTTON)
+	{
+		if (state == GLUT_DOWN)
+		{
+			dragging = true;
+			mouseX = nx;
+			mouseY = ny;
+		}
+		else if (state == GLUT_UP)
+		{
+			dragging = false;
+			dragIdx = -1;
+		}
+	}
+}
+
+void MouseDrag(int x, int y)
+{
+	if (!dragging) return;
+}
+
+GLvoid Keyboard(unsigned char key, int x, int y)
+{
+	switch (key)
+	{
+	case 'q':
+		exit(0);
+		break;
+	}
+}
+
 void main(int argc, char** argv)
 {
 	glutInit(&argc, argv);
@@ -284,6 +332,10 @@ void main(int argc, char** argv)
 	make_vertexShaders();
 	make_fragmentShaders();
 	shaderProgramID = make_shaderProgram();
+
+	glutKeyboardFunc(Keyboard);
+	glutMouseFunc(Mouse);
+	glutMotionFunc(MouseDrag);
 	glutDisplayFunc(drawScene);
 	glutReshapeFunc(Reshape);
 	glutMainLoop();
